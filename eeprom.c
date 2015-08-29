@@ -26,18 +26,31 @@ static int eeprom_putc(char, FILE *);
 static int eeprom_getc(FILE *);
 static FILE eeprom_stream = FDEV_SETUP_STREAM(eeprom_putc, eeprom_getc, _FDEV_SETUP_RW);
 
-static uint8_t *eeprom_head = NULL;
-static const uint8_t *eeprom_tail = NULL;
+static uint8_t *eeprom_ptr_min;
+static const uint8_t *eeprom_ptr_max;
+static uint8_t *eeprom_ptr_put;
+static const uint8_t *eeprom_ptr_get;
 
-FILE *eeprom_open(void) {
+FILE *eeprom_open(char *min, const char *max, char *initial_put, const char *initial_get) {
+	eeprom_ptr_min = (uint8_t *)min;
+	eeprom_ptr_max = (const uint8_t *)max;
+	eeprom_ptr_put = (uint8_t *)initial_put;
+	eeprom_ptr_get = (const uint8_t *)initial_get;
+
 	return &eeprom_stream;
 }
 
 int eeprom_putc(char c, FILE *stream) {
-	eeprom_write_byte(++eeprom_head, (uint8_t)c);
+	if (++eeprom_ptr_put > eeprom_ptr_max) {
+		eeprom_ptr_put = eeprom_ptr_min;
+	}
+	eeprom_write_byte(eeprom_ptr_put, (uint8_t)c);
 	return c;
 }
 
 int eeprom_getc(FILE *stream) {
-	return (char)eeprom_read_byte(++eeprom_tail);
+	if (++eeprom_ptr_get > eeprom_ptr_max) {
+		eeprom_ptr_get = eeprom_ptr_min;
+	}
+	return (char)eeprom_read_byte(eeprom_ptr_get);
 }

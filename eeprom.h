@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 extern "C" {
 #endif
 
-FILE *eeprom_open(void);
+FILE *eeprom_open(char *min, const char *max, char *initial_put, const char *initial_get);
 
 #ifdef __cplusplus
 } // extern "C"
