@@ -35,11 +35,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 extern "C" {
 #endif
 
-#ifdef __cplusplus
-FILE *usart_open(char mode = USART_MODE_SYNC_NONE | USART_MODE_PARITY_NONE, unsigned int baudrate = 0, bool doublespeed = false, unsigned int stopsize = 1, unsigned int charsize = 8);
-#else
 FILE *usart_open(char mode, unsigned int baudrate, bool doublespeed, unsigned int stopsize, unsigned int charsize);
-#endif
 
 #ifdef __cplusplus
 } // extern "C"
