@@ -19,6 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "ring.h"
+
 #ifndef USART_H
 #define USART_H
 
@@ -35,7 +37,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 extern "C" {
 #endif
 
-FILE *usart_open(char mode, unsigned int baudrate, bool doublespeed, unsigned int stopsize, unsigned int charsize);
+FILE *usart_open(char mode, unsigned int baudrate, bool doublespeed, unsigned int stopsize, unsigned int charsize, struct ring_buf buf_rx, struct ring_buf buf_tx);
 
 #ifdef __cplusplus
 } // extern "C"

@@ -18,16 +18,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <avr/interrupt.h>
 #include <avr/io.h>
 #include <avr/sfr_defs.h>
 
+#include "ring.h"
 #include "usart.h"
 
 static int usart_putc(char, FILE *);
 static int usart_getc(FILE *);
 static FILE usart_stream = FDEV_SETUP_STREAM(usart_putc, usart_getc, _FDEV_SETUP_RW);
 
-FILE *usart_open(char mode, unsigned int baudrate, bool doublespeed, unsigned int stopsize, unsigned int charsize) {
+static volatile struct ring_buf usart_buf_rx;
+static volatile struct ring_buf usart_buf_tx;
+
+FILE *usart_open(char mode, unsigned int baudrate, bool doublespeed, unsigned int stopsize, unsigned int charsize, volatile struct ring_buf buf_rx, volatile struct ring_buf buf_tx) {
 	UCSR0C &= ~_BV(UMSEL01);
 	switch (mode & USART_MODE_SYNC) {
 		case USART_MODE_SYNC_NONE:
@@ -109,16 +114,50 @@ FILE *usart_open(char mode, unsigned int baudrate, bool doublespeed, unsigned in
 			return NULL;
 	}
 
+	usart_buf_rx = buf_rx;
+	if (usart_buf_rx.limit_tail == NULL) {
+		UCSR0B &= ~_BV(RXCIE0);
+	}
+	else {
+		UCSR0B |= _BV(RXCIE0);
+	}
+
+	usart_buf_tx = buf_tx;
+	if (usart_buf_tx.limit_tail == NULL) {
+		UCSR0B &= ~_BV(UDRIE0);
+	}
+	else {
+		UCSR0B |= _BV(UDRIE0);
+	}
+
 	return &usart_stream;
 }
 
 int usart_putc(char c, FILE *stream) {
-	loop_until_bit_is_set(UCSR0A, UDRE0);
-	UDR0 = c;
-	return c; // make sure to return c, and not UDR0
+	if (usart_buf_tx.limit_tail == NULL) {
+		loop_until_bit_is_set(UCSR0A, UDRE0);
+		UDR0 = c;
+		return c; // make sure to return c, and not UDR0
+	}
+	else {
+		return ring_putc(c, &usart_buf_tx);
+	}
 }
 
 int usart_getc(FILE *stream) {
-	loop_until_bit_is_set(UCSR0A, RXC0);
-	return UDR0;
+	if (usart_buf_rx.limit_tail == NULL) {
+		loop_until_bit_is_set(UCSR0A, RXC0);
+		return UDR0;
+	}
+	else {
+		return ring_getc(&usart_buf_rx);
+	}
+}
+
+ISR(USART_UDRE_vect) {
+	UDR0 = ring_getc(&usart_buf_tx);
+}
+
+ISR(USART_RX_vect) {
+	ring_putc(UDR0, &usart_buf_rx);
 }
