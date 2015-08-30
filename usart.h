@@ -37,7 +37,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 extern "C" {
 #endif
 
-FILE *usart_open(char mode, unsigned int baudrate, bool doublespeed, unsigned int stopsize, unsigned int charsize, struct ring_buf buf_rx, struct ring_buf buf_tx);
+FILE *usart_open(char mode, unsigned int baudrate, bool doublespeed, unsigned int stopsize, unsigned int charsize, volatile struct ring_buf *volatile buf_rx, volatile struct ring_buf *volatile buf_tx);
 
 #ifdef __cplusplus
 } // extern "C"

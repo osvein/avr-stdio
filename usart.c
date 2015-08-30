@@ -29,10 +29,10 @@ static int usart_putc(char, FILE *);
 static int usart_getc(FILE *);
 static FILE usart_stream = FDEV_SETUP_STREAM(usart_putc, usart_getc, _FDEV_SETUP_RW);
 
-static volatile struct ring_buf usart_buf_rx;
-static volatile struct ring_buf usart_buf_tx;
+static volatile struct ring_buf *volatile usart_buf_rx;
+static volatile struct ring_buf *volatile usart_buf_tx;
 
-FILE *usart_open(char mode, unsigned int baudrate, bool doublespeed, unsigned int stopsize, unsigned int charsize, volatile struct ring_buf buf_rx, volatile struct ring_buf buf_tx) {
+FILE *usart_open(char mode, unsigned int baudrate, bool doublespeed, unsigned int stopsize, unsigned int charsize, volatile struct ring_buf *volatile buf_rx, volatile struct ring_buf *volatile buf_tx) {
 	UCSR0C &= ~_BV(UMSEL01);
 	switch (mode & USART_MODE_SYNC) {
 		case USART_MODE_SYNC_NONE:
@@ -115,7 +115,7 @@ FILE *usart_open(char mode, unsigned int baudrate, bool doublespeed, unsigned in
 	}
 
 	usart_buf_rx = buf_rx;
-	if (usart_buf_rx.limit_tail == NULL) {
+	if (usart_buf_rx->limit_tail == NULL) {
 		UCSR0B &= ~_BV(RXCIE0);
 	}
 	else {
@@ -123,7 +123,7 @@ FILE *usart_open(char mode, unsigned int baudrate, bool doublespeed, unsigned in
 	}
 
 	usart_buf_tx = buf_tx;
-	if (usart_buf_tx.limit_tail == NULL) {
+	if (usart_buf_tx->limit_tail == NULL) {
 		UCSR0B &= ~_BV(UDRIE0);
 	}
 	else {
@@ -134,30 +134,30 @@ FILE *usart_open(char mode, unsigned int baudrate, bool doublespeed, unsigned in
 }
 
 int usart_putc(char c, FILE *stream) {
-	if (usart_buf_tx.limit_tail == NULL) {
+	if (usart_buf_tx->limit_tail == NULL) {
 		loop_until_bit_is_set(UCSR0A, UDRE0);
 		UDR0 = c;
 		return c; // make sure to return c, and not UDR0
 	}
 	else {
-		return ring_putc(c, &usart_buf_tx);
+		return ring_putc(c, usart_buf_tx);
 	}
 }
 
 int usart_getc(FILE *stream) {
-	if (usart_buf_rx.limit_tail == NULL) {
+	if (usart_buf_rx->limit_tail == NULL) {
 		loop_until_bit_is_set(UCSR0A, RXC0);
 		return UDR0;
 	}
 	else {
-		return ring_getc(&usart_buf_rx);
+		return ring_getc(usart_buf_rx);
 	}
 }
 
 ISR(USART_UDRE_vect) {
-	UDR0 = ring_getc(&usart_buf_tx);
+	UDR0 = ring_getc(usart_buf_tx);
 }
 
 ISR(USART_RX_vect) {
-	ring_putc(UDR0, &usart_buf_rx);
+	ring_putc(UDR0, usart_buf_rx);
 }

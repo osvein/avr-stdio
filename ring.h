@@ -24,8 +24,8 @@ extern "C" {
 #endif
 
 struct ring_buf {
-    char *limit_tail;
-    char *limit_head;
+    volatile char *const limit_tail;
+    const char *const limit_head;
     volatile char *tail; // where the next character is to be read
     volatile char *head; // where the previous character was written
 };
